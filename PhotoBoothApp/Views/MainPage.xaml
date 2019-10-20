@@ -25,16 +25,6 @@
     <Grid>
         <Image Name="capturedImg"></Image>
         <InkCanvas Name="PaintCanvas"  />
-        <Grid>
-            
-            <StackPanel Orientation="Horizontal"  HorizontalAlignment="Center">
-                <CaptureElement Name="WebCamControl" Stretch="Uniform" Margin="206,152,253,127" />
-                <CommandBar HorizontalAlignment="Stretch" Height="42" Margin="0,0,953,0" >
-                    <AppBarButton Name="btnTakePicture" Label="Take Picture" Click="BtnTakePicture_Click"></AppBarButton>
-                </CommandBar>
-            </StackPanel>
-
-        </Grid>
 
     </Grid>
 </Page>

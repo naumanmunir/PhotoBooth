@@ -9,6 +9,7 @@ using Windows.Foundation;
 using Windows.Foundation.Collections;
 using Windows.Graphics.Imaging;
 using Windows.Media.Capture;
+using Windows.Media.Core;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
@@ -31,8 +32,6 @@ namespace PhotoBoothApp
     /// </summary>
     public sealed partial class MainPage : Page
     {
-        private MediaCapture _mediaCapture;
-
         public Stack<InkStroke> UndoStrokes { get; set; } = new Stack<InkStroke>(6);
 
         public Queue<InkStroke> strokesQueue { get; set; } = new Queue<InkStroke>(6);
@@ -49,103 +48,14 @@ namespace PhotoBoothApp
 
             //colorPicker.ColorSpectrumComponents = ColorSpectrumComponents.
 
-            //PaintCanvas.InkPresenter.StrokeInput.StrokeStarted += StrokeInput_StrokeStarted;
-            //PaintCanvas.InkPresenter.StrokeInput.StrokeEnded += StrokeInput_StrokeEnded;
-            //PaintCanvas.InkPresenter.StrokeInput.StrokeContinued += StrokeInput_StrokeContinued;
 
-            
-
-        }
-
-
-        private void StrokeInput_StrokeEnded(InkStrokeInput sender, Windows.UI.Core.PointerEventArgs args)
-        {
-            var strokes = PaintCanvas.InkPresenter.StrokeContainer.GetStrokes();
-
-            if (UndoStrokes.Count < 7)
-            {
-                //strokesQueue.Enqueue(sender.InkPresenter.StrokeContainer.st);
-                var t = strokes.LastOrDefault();
-                if (t != null)
-                {
-                    UndoStrokes.Push(t);
-                }
-            }
-            else
-            {
-                UndoStrokes.Reverse();
-                UndoStrokes.Pop();
-                UndoStrokes.Reverse();
-            }
-        }
-
-        private void StrokeInput_StrokeStarted(InkStrokeInput sender, Windows.UI.Core.PointerEventArgs args)
-        {
-            var strokes = PaintCanvas.InkPresenter.StrokeContainer.GetStrokes();
-
-            if (strokesQueue.Count < 7)
-            {
-                //strokesQueue.Enqueue(sender.InkPresenter.StrokeContainer.st);
-                
-            }
-            else
-            {
-                strokesQueue.Dequeue();
-            }
-
-
-        }
-
-        public async void Application_Resuming(object sender, object e)
-        {
-            await InitializeCameraAsync();
-        }
-
-        protected override async void OnNavigatedTo(NavigationEventArgs e)
-        {
-            await InitializeCameraAsync();
         }
 
         private void NewFile_Click(object sender, RoutedEventArgs e)
         {
-            WebCamControl.Visibility = Visibility.Collapsed;
+            capturedImg.Source = null;
             PaintCanvas.InkPresenter.StrokeContainer.Clear();
 
-
-
-            
-        }
-
-        public async Task InitializeCameraAsync()
-        {
-            if (_mediaCapture == null)
-            {
-                // Get the camera devices
-                var cameraDevices = await DeviceInformation.FindAllAsync(DeviceClass.VideoCapture);
-
-                // try to get the back facing device for a phone
-                var backFacingDevice = cameraDevices
-                    .FirstOrDefault(c => c.EnclosureLocation?.Panel == Windows.Devices.Enumeration.Panel.Back);
-
-                // but if that doesn't exist, take the first camera device available
-                var preferredDevice = backFacingDevice ?? cameraDevices.FirstOrDefault();
-
-                // Create MediaCapture
-                _mediaCapture = new MediaCapture();
-
-                // Initialize MediaCapture and settings
-                await _mediaCapture.InitializeAsync(
-                    new MediaCaptureInitializationSettings
-                    {
-                        VideoDeviceId = preferredDevice.Id
-                    });
-
-                // Set the preview source for the CaptureElement
-                WebCamControl.Source = _mediaCapture;
-
-                // Start viewing through the CaptureElement 
-                await _mediaCapture.StartPreviewAsync();
-            }
         }
 
         private void BtnUndo_Click(object sender, RoutedEventArgs e)
@@ -171,7 +81,7 @@ namespace PhotoBoothApp
 
             if (file != null)
             {
-                WebCamControl.Visibility = Visibility.Collapsed;
+                capturedImg.Source = null;
 
                 var stream = await file.OpenAsync(FileAccessMode.Read);
 
@@ -236,11 +146,40 @@ namespace PhotoBoothApp
             }
         }
 
-        private void BtnCapture_Click(object sender, RoutedEventArgs e)
+        private async void BtnCapture_Click(object sender, RoutedEventArgs e)
         {
-            WebCamControl.Visibility = Visibility.Visible;
+            CameraCaptureUI captureUI = new CameraCaptureUI();
+            captureUI.PhotoSettings.Format = CameraCaptureUIPhotoFormat.Jpeg;
+            captureUI.PhotoSettings.CroppedSizeInPixels = new Size(200, 200);
 
-            Application.Current.Resuming += Application_Resuming;
+            StorageFile photo = await captureUI.CaptureFileAsync(CameraCaptureUIMode.Photo);
+
+            if (photo == null)
+            {
+                // User cancelled photo capture
+                return;
+            }
+
+            StorageFolder destinationFolder = await ApplicationData.Current.LocalFolder.CreateFolderAsync("ProfilePhotoFolder", CreationCollisionOption.OpenIfExists);
+
+            await photo.CopyAsync(destinationFolder, "ProfilePhoto.jpg", NameCollisionOption.ReplaceExisting);
+            
+
+            //read stream
+            IRandomAccessStream stream = await photo.OpenAsync(FileAccessMode.Read);
+            BitmapDecoder decoder = await BitmapDecoder.CreateAsync(stream);
+            SoftwareBitmap softwareBitmap = await decoder.GetSoftwareBitmapAsync();
+
+
+
+            SoftwareBitmap softwareBitmapBGR8 = SoftwareBitmap.Convert(softwareBitmap, BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
+
+            SoftwareBitmapSource bitmapSource = new SoftwareBitmapSource();
+            await bitmapSource.SetBitmapAsync(softwareBitmapBGR8);
+
+            capturedImg.Source = bitmapSource;
+
+            await photo.DeleteAsync();
         }
 
         private void colorPicker_ColorChanged(ColorPicker sender, ColorChangedEventArgs args)
@@ -251,38 +190,5 @@ namespace PhotoBoothApp
             PaintCanvas.InkPresenter.StrokeInput.InkPresenter.UpdateDefaultDrawingAttributes(ida);
         }
 
-        private async void BtnTakePicture_Click(object sender, RoutedEventArgs e)
-        {
-            CameraCaptureUI captureUI = new CameraCaptureUI();
-            captureUI.PhotoSettings.Format = CameraCaptureUIPhotoFormat.Jpeg;
-            captureUI.PhotoSettings.CroppedSizeInPixels = new Size(200, 200);
-            //WebCamControl.pa
-            StorageFile photo = await captureUI.CaptureFileAsync(CameraCaptureUIMode.Photo);
-
-            //if (photo == null)
-            //{
-            //    // User cancelled photo capture
-            //    return;
-            //}
-
-            //StorageFolder destinationFolder = await ApplicationData.Current.LocalFolder.CreateFolderAsync("ProfilePhotoFolder", CreationCollisionOption.OpenIfExists);
-
-            //await photo.CopyAsync(destinationFolder, "ProfilePhoto.jpg", NameCollisionOption.ReplaceExisting);
-            //await photo.DeleteAsync();
-
-            ////read stream
-            //IRandomAccessStream stream = await photo.OpenAsync(FileAccessMode.Read);
-            //BitmapDecoder decoder = await BitmapDecoder.CreateAsync(stream);
-            //SoftwareBitmap softwareBitmap = await decoder.GetSoftwareBitmapAsync();
-
-
-
-            //SoftwareBitmap softwareBitmapBGR8 = SoftwareBitmap.Convert(softwareBitmap, BitmapPixelFormat.Bgra8,BitmapAlphaMode.Premultiplied);
-
-            //SoftwareBitmapSource bitmapSource = new SoftwareBitmapSource();
-            //await bitmapSource.SetBitmapAsync(softwareBitmapBGR8);
-
-            //capturedImg.Source = bitmapSource;
-        }
     }
 }
