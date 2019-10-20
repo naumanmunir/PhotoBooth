@@ -17,7 +17,14 @@
                 <AppBarButton Name="btnCapture" Icon="Camera" Click="BtnCapture_Click"></AppBarButton>
                 <AppBarButton Name="btnUndo" Icon="Undo" Click="BtnUndo_Click"></AppBarButton>
 
-                <ColorPicker x:Name="colorPicker" ColorChanged="colorPicker_ColorChanged" />
+                <!--<ColorPicker x:Name="colorPicker" ColorChanged="colorPicker_ColorChanged" />-->
+
+                <StackPanel>
+                    <ComboBox Name="colorBox"  PlaceholderText="Pick a color" Width="200" SelectionChanged="ColorBox_SelectionChanged" SelectedIndex="0" />
+
+                    <Rectangle x:Name="colorRectangle" Height="30" Width="100" Margin="0,8,0,0" />
+                </StackPanel>
+
             </StackPanel>
         </AppBar>
     </Page.TopAppBar>

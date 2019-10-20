@@ -1,4 +1,5 @@
-﻿using System;
+﻿using PhotoBoothApp.Models;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -13,15 +14,18 @@ using Windows.Media.Core;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
+using Windows.UI;
 using Windows.UI.Input.Inking;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
 using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Input;
+using Windows.UI.Xaml.Markup;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Xaml.Navigation;
+using Windows.UI.Xaml.Shapes;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -32,9 +36,14 @@ namespace PhotoBoothApp
     /// </summary>
     public sealed partial class MainPage : Page
     {
-        public Stack<InkStroke> UndoStrokes { get; set; } = new Stack<InkStroke>(6);
+        int undoCounter = 3;
 
-        public Queue<InkStroke> strokesQueue { get; set; } = new Queue<InkStroke>(6);
+        int strokeCounter = 0;
+
+        public Stack<InkStroke> UndoStrokes { get; set; } = new Stack<InkStroke>();
+        public Stack<InkStroke> CollectedStrokes { get; set; } = new Stack<InkStroke>();
+
+        public List<Color> AvailableColors { get; set; } = new List<Color>();
 
         public MainPage()
         {
@@ -46,9 +55,70 @@ namespace PhotoBoothApp
                 Windows.UI.Core.CoreInputDeviceTypes.Touch;
 
 
-            //colorPicker.ColorSpectrumComponents = ColorSpectrumComponents.
+            AvailableColors.Add(Color.FromArgb(255, 0, 0, 0));
+            AvailableColors.Add(Color.FromArgb(255, 128, 128, 128));
+            AvailableColors.Add(Color.FromArgb(255, 192, 192, 192));
+            AvailableColors.Add(Color.FromArgb(255, 255, 255, 255));
+            AvailableColors.Add(Color.FromArgb(255, 255, 0, 0));
+            AvailableColors.Add(Color.FromArgb(255, 255, 255, 0));
+            AvailableColors.Add(Color.FromArgb(255, 128, 255, 0));
+            AvailableColors.Add(Color.FromArgb(255, 0, 255, 255));
+            AvailableColors.Add(Color.FromArgb(255, 0, 128, 192));
+            AvailableColors.Add(Color.FromArgb(255, 128, 128, 192));
+            AvailableColors.Add(Color.FromArgb(255, 255, 0, 255));
+            AvailableColors.Add(Color.FromArgb(255, 128, 0, 255));
+            AvailableColors.Add(Color.FromArgb(255, 0, 128, 64));
+            AvailableColors.Add(Color.FromArgb(255, 128, 0, 0));
+            AvailableColors.Add(Color.FromArgb(255, 0, 0, 255));
+            AvailableColors.Add(Color.FromArgb(255, 0, 128, 255));
 
 
+            foreach (var c in AvailableColors)
+            {
+                Rectangle rec = new Rectangle();
+
+                rec.Height = 20;
+                rec.Name = c.ToString();
+                rec.Fill = new SolidColorBrush(c);
+                colorBox.Items.Add(rec);
+            }
+
+            PaintCanvas.InkPresenter.StrokesCollected += InkPresenter_StrokesCollected;
+        }
+
+        private void ColorBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            InkDrawingAttributes ida = new InkDrawingAttributes();
+
+            Rectangle b = (Rectangle)e.AddedItems[0];
+            
+            var color = (Color)XamlBindingHelper.ConvertValue(typeof(Color), b.Name);
+            ida.Color = color;
+
+            colorRectangle.Fill = new SolidColorBrush(color);
+            PaintCanvas.InkPresenter.StrokeInput.InkPresenter.UpdateDefaultDrawingAttributes(ida);
+
+        }
+
+
+
+        private void InkPresenter_StrokesCollected(InkPresenter sender, InkStrokesCollectedEventArgs args)
+        {
+            var strokes = sender.StrokeContainer.GetStrokes();
+
+            if (strokes.Last() != null)
+            {
+                if (CollectedStrokes.Count <= 3)
+                {
+                    CollectedStrokes.Push(strokes.Last());
+                }
+                else
+                {
+
+                    //CollectedStrokes.Push(strokes.Last());
+                }
+            }
+            
         }
 
         private void NewFile_Click(object sender, RoutedEventArgs e)
@@ -58,15 +128,35 @@ namespace PhotoBoothApp
 
         }
 
+        int currIndex = 0;
+
         private void BtnUndo_Click(object sender, RoutedEventArgs e)
         {
             var strokes = PaintCanvas.InkPresenter.StrokeContainer.GetStrokes();
             if (strokes.Count > 0)
             {
-                strokes[strokes.Count - 1].Selected = true;
+                currIndex = strokes.Count - undoCounter;
 
-                PaintCanvas.InkPresenter.StrokeContainer.DeleteSelected();
+                if (undoCounter > 0 && strokes.Count - 1 >= currIndex)
+                {
+                    strokes[strokes.Count - 1].Selected = true;
+
+                    PaintCanvas.InkPresenter.StrokeContainer.DeleteSelected();
+
+                    undoCounter--;
+                }
+
+
             }
+
+            //if (CollectedStrokes.Count > 0)
+            //{
+            //    var stroke = CollectedStrokes.Pop();
+
+            //    stroke.Selected = true;
+
+            //    PaintCanvas.InkPresenter.StrokeContainer.DeleteSelected();
+            //}
 
         }
 
@@ -180,14 +270,6 @@ namespace PhotoBoothApp
             capturedImg.Source = bitmapSource;
 
             await photo.DeleteAsync();
-        }
-
-        private void colorPicker_ColorChanged(ColorPicker sender, ColorChangedEventArgs args)
-        {
-            InkDrawingAttributes ida = new InkDrawingAttributes();
-
-            ida.Color = sender.Color;
-            PaintCanvas.InkPresenter.StrokeInput.InkPresenter.UpdateDefaultDrawingAttributes(ida);
         }
 
     }
