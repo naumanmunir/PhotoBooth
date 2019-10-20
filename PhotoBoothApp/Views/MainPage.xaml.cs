@@ -101,7 +101,6 @@ namespace PhotoBoothApp
         }
 
 
-
         private void InkPresenter_StrokesCollected(InkPresenter sender, InkStrokesCollectedEventArgs args)
         {
             var strokes = sender.StrokeContainer.GetStrokes();
@@ -135,9 +134,8 @@ namespace PhotoBoothApp
             var strokes = PaintCanvas.InkPresenter.StrokeContainer.GetStrokes();
             if (strokes.Count > 0)
             {
-                currIndex = strokes.Count - undoCounter;
 
-                if (undoCounter > 0 && strokes.Count - 1 >= currIndex)
+                if (undoCounter > 0)
                 {
                     strokes[strokes.Count - 1].Selected = true;
 
@@ -194,21 +192,20 @@ namespace PhotoBoothApp
                 FileSavePicker fsp = new FileSavePicker();
 
                 fsp.FileTypeChoices.Add("JPEG", new List<string>() { ".jpg" });
-                fsp.FileTypeChoices.Add("SVG", new List<string>() { ".svg" });
+                fsp.FileTypeChoices.Add("PBD", new List<string>() { ".pbd" });      //custom file type?
                 fsp.DefaultFileExtension = ".jpg";
 
                 StorageFile file = await fsp.PickSaveFileAsync();
 
                 if (file != null)
                 {
-                    
-                    // Prevent updates to the file until updates are 
-                    // finalized with call to CompleteUpdatesAsync.
+                    //Prevent updates to the file until updates are 
                     CachedFileManager.DeferUpdates(file);
-                    // Open a file stream for writing.
+
+                    //Open file stream for writing.
                     var stream = await file.OpenAsync(FileAccessMode.ReadWrite);
 
-                    // Write the ink strokes to the output stream.
+                    //Write the ink strokes to the output stream.
                     using (IOutputStream outputStream = stream.GetOutputStreamAt(0))
                     {
                         await PaintCanvas.InkPresenter.StrokeContainer.SaveAsync(outputStream);
@@ -230,23 +227,19 @@ namespace PhotoBoothApp
                     }
                 }
             }
-            else
-            {
-                //operation cancelled
-            }
         }
 
         private async void BtnCapture_Click(object sender, RoutedEventArgs e)
         {
             CameraCaptureUI captureUI = new CameraCaptureUI();
             captureUI.PhotoSettings.Format = CameraCaptureUIPhotoFormat.Jpeg;
-            captureUI.PhotoSettings.CroppedSizeInPixels = new Size(200, 200);
+            captureUI.PhotoSettings.CroppedSizeInPixels = new Size(250, 250);
 
             StorageFile photo = await captureUI.CaptureFileAsync(CameraCaptureUIMode.Photo);
 
             if (photo == null)
             {
-                // User cancelled photo capture
+                //User cancelled photo capture
                 return;
             }
 
@@ -261,14 +254,16 @@ namespace PhotoBoothApp
             SoftwareBitmap softwareBitmap = await decoder.GetSoftwareBitmapAsync();
 
 
-
             SoftwareBitmap softwareBitmapBGR8 = SoftwareBitmap.Convert(softwareBitmap, BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
+
 
             SoftwareBitmapSource bitmapSource = new SoftwareBitmapSource();
             await bitmapSource.SetBitmapAsync(softwareBitmapBGR8);
 
+            //set image
             capturedImg.Source = bitmapSource;
 
+            //delete photo afterwards
             await photo.DeleteAsync();
         }
 
