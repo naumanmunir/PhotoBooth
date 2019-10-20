@@ -12,14 +12,16 @@ It allows users to draw/paint on a canvas, change the color of their pen from 16
 </ul>
 
 
-<h2>Install Instructions:</h2>
+<h2>Build the sample</h2>
 
-1.Download 
+1. If you download the samples ZIP, be sure to unzip the entire archive, not just the folder with the sample you want to build.
 
-2.
+2. Start Microsoft Visual Studio 2017 or later and select File > Open > Project/Solution.
 
-<h2>Running Tests:</h2>
+3. Press Ctrl+Shift+B, or select Build > Build Solution.
 
-<h2>Technologies Used:</h2>
+<h2>Running Tests</h2>
+
+<h2>Technologies Used</h2>
 
 UWP .NET Framework 4.6.1
