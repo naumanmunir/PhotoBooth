@@ -1,0 +1,40 @@
+﻿<Page
+    x:Class="PhotoBoothApp.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:PhotoBoothApp"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Page.TopAppBar>
+        <AppBar IsSticky="True" IsOpen="true" Height="40" >
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="left">
+                <AppBarButton Name="btnNew" Icon="OpenFile" Click="NewFile_Click"></AppBarButton>
+                <AppBarButton Name="btnOpen" Icon="Folder" Click="BtnOpen_ClickAsync"></AppBarButton>
+                <AppBarButton Name="btnSave" Icon="Save" Click="BtnSave_ClickAsync"></AppBarButton>
+                <AppBarButton Name="btnCapture" Icon="Camera" Click="BtnCapture_Click"></AppBarButton>
+                <AppBarButton Name="btnUndo" Icon="Undo" Click="BtnUndo_Click"></AppBarButton>
+
+                <ColorPicker x:Name="colorPicker" ColorChanged="colorPicker_ColorChanged" />
+            </StackPanel>
+        </AppBar>
+    </Page.TopAppBar>
+
+    <Grid>
+        <Image Name="capturedImg"></Image>
+        <InkCanvas Name="PaintCanvas"  />
+        <Grid>
+            
+            <StackPanel Orientation="Horizontal"  HorizontalAlignment="Center">
+                <CaptureElement Name="WebCamControl" Stretch="Uniform" Margin="206,152,253,127" />
+                <CommandBar HorizontalAlignment="Stretch" Height="42" Margin="0,0,953,0" >
+                    <AppBarButton Name="btnTakePicture" Label="Take Picture" Click="BtnTakePicture_Click"></AppBarButton>
+                </CommandBar>
+            </StackPanel>
+
+        </Grid>
+
+    </Grid>
+</Page>
