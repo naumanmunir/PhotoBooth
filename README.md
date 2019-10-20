@@ -64,9 +64,9 @@ Functionalities of this app:
 
 <h2>Build the sample</h2>
 
-1. If you download the samples ZIP, be sure to unzip the entire archive, not just the folder with the sample you want to build.
+1. Download or Clone the repo. If you download the ZIP, be sure to unzip the entire archive, not just the folder with the sample you want to build.
 
-2. Start Microsoft Visual Studio 2017 or later and select File > Open > Project/Solution.
+2. Start Microsoft Visual Studio 2017 or later and select File > Open > Project/Solution. Navigate to the unzipped solutions folder.
 
 3. Press Ctrl+Shift+B, or select Build > Build Solution.
 
