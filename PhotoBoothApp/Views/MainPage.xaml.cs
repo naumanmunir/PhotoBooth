@@ -112,6 +112,7 @@ namespace PhotoBoothApp
             PaintCanvas.InkPresenter.StrokeContainer.Clear();
 
 
+
             
         }
 
