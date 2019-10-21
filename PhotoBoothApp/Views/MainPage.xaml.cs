@@ -47,44 +47,20 @@ namespace PhotoBoothApp
         {
             this.InitializeComponent();
 
-            PaintCanvas.InkPresenter.InputDeviceTypes =
-                Windows.UI.Core.CoreInputDeviceTypes.Mouse |
-                Windows.UI.Core.CoreInputDeviceTypes.Pen |
-                Windows.UI.Core.CoreInputDeviceTypes.Touch;
+            SetInputDeviceTypes();
 
 
-            //TODO: Place/generate this in a separate static file or class
-            AvailableColors.Add(Color.FromArgb(255, 0, 0, 0));
-            AvailableColors.Add(Color.FromArgb(255, 128, 128, 128));
-            AvailableColors.Add(Color.FromArgb(255, 192, 192, 192));
-            AvailableColors.Add(Color.FromArgb(255, 255, 255, 255));
-            AvailableColors.Add(Color.FromArgb(255, 255, 0, 0));
-            AvailableColors.Add(Color.FromArgb(255, 255, 255, 0));
-            AvailableColors.Add(Color.FromArgb(255, 128, 255, 0));
-            AvailableColors.Add(Color.FromArgb(255, 0, 255, 255));
-            AvailableColors.Add(Color.FromArgb(255, 0, 128, 192));
-            AvailableColors.Add(Color.FromArgb(255, 128, 128, 192));
-            AvailableColors.Add(Color.FromArgb(255, 255, 0, 255));
-            AvailableColors.Add(Color.FromArgb(255, 128, 0, 255));
-            AvailableColors.Add(Color.FromArgb(255, 0, 128, 64));
-            AvailableColors.Add(Color.FromArgb(255, 128, 0, 0));
-            AvailableColors.Add(Color.FromArgb(255, 0, 0, 255));
-            AvailableColors.Add(Color.FromArgb(255, 0, 128, 255));
+            PopulateColors();
+            GenerateColorBoxes();
 
-            //Dynamically generate rectangles and add them to drop down
-            foreach (var c in AvailableColors)
-            {
-                Rectangle rec = new Rectangle();
-
-                rec.Height = 20;
-                rec.Name = c.ToString();
-                rec.Fill = new SolidColorBrush(c);
-                colorBox.Items.Add(rec);
-            }
 
             PaintCanvas.InkPresenter.StrokesCollected += InkPresenter_StrokesCollected;
         }
 
+
+        /// <summary>
+        /// Change pencil color
+        /// </summary>
         private void ColorBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             InkDrawingAttributes ida = new InkDrawingAttributes();
@@ -180,11 +156,9 @@ namespace PhotoBoothApp
                 FileSavePicker fsp = new FileSavePicker();
 
                 fsp.FileTypeChoices.Add("JPEG", new List<string>() { ".jpg" });
-                fsp.FileTypeChoices.Add("PBD", new List<string>() { ".pbd" });      //custom file type?
                 fsp.DefaultFileExtension = ".jpg";
 
                 StorageFile file = await fsp.PickSaveFileAsync();
-
 
                 if (file != null)
                 {
@@ -203,19 +177,29 @@ namespace PhotoBoothApp
                         IBuffer pixels = await renderTargetBitmap.GetPixelsAsync();
                         byte[] bytes = pixels.ToArray();
 
-                        var canvasBytes = GetSignatureBitmapFullAsync();
+                        var canvasBitmap = GetSignatureBitmapFullAsync();
 
                         // Create an encoder with the desired format
                         BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.JpegEncoderId, stream);
 
-                        
 
-                        encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore, (uint)capturedImg.ActualWidth, (uint)capturedImg.ActualHeight, display.LogicalDpi, display.LogicalDpi, bytes);
+                        // set the source for WriteableBitmap  
+                        await canvasBitmap.Result.SetSourceAsync(stream);
+
+                        // Get pixels of the WriteableBitmap object 
+                        Stream pixelStream = canvasBitmap.Result.PixelBuffer.AsStream();
+                        byte[] pixels2 = new byte[pixelStream.Length];
+                        await pixelStream.ReadAsync(pixels2, 0, pixels2.Length);
 
 
-                        
+                        //encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore, (uint)capturedImg.ActualWidth, (uint)capturedImg.ActualHeight, display.LogicalDpi, display.LogicalDpi, bytes);
+                        encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore, (uint)canvasBitmap.Result.PixelWidth, (uint)canvasBitmap.Result.PixelHeight, 96, 96, pixels2);
+
+
+
                         await encoder.FlushAsync();
                     }
+
 
                     //Write the ink strokes to the output stream.
                     //using (IOutputStream outputStream = stream.GetOutputStreamAt(0))
@@ -241,14 +225,6 @@ namespace PhotoBoothApp
                     }
                 }
             }
-
-
-            //BitmapDecoder decoder = await BitmapDecoder.CreateAsync(stream);
-
-
-            //SoftwareBitmap softwareBitmap = await decoder.GetSoftwareBitmapAsync();
-
-            //SoftwareBitmap softwareBitmapBGR8 = SoftwareBitmap.Convert(softwareBitmap, BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
         }
 
         private byte[] ConvertInkCanvasToByteArray()
@@ -333,6 +309,58 @@ namespace PhotoBoothApp
 
             //delete photo afterwards
             await photo.DeleteAsync();
+        }
+
+        /// <summary>
+        /// Sets various input devices for our ink canvas
+        /// </summary>
+        private void SetInputDeviceTypes()
+        {
+            PaintCanvas.InkPresenter.InputDeviceTypes =
+                Windows.UI.Core.CoreInputDeviceTypes.Mouse |
+                Windows.UI.Core.CoreInputDeviceTypes.Pen |
+                Windows.UI.Core.CoreInputDeviceTypes.Touch;
+        }
+
+        /// <summary>
+        /// Adds 16 colors to our Available colors list
+        /// </summary>
+        private void PopulateColors()
+        {
+            //TODO: Place/generate this in a separate static file or class
+            AvailableColors.Add(Color.FromArgb(255, 0, 0, 0));
+            AvailableColors.Add(Color.FromArgb(255, 128, 128, 128));
+            AvailableColors.Add(Color.FromArgb(255, 192, 192, 192));
+            AvailableColors.Add(Color.FromArgb(255, 255, 255, 255));
+            AvailableColors.Add(Color.FromArgb(255, 255, 0, 0));
+            AvailableColors.Add(Color.FromArgb(255, 255, 255, 0));
+            AvailableColors.Add(Color.FromArgb(255, 128, 255, 0));
+            AvailableColors.Add(Color.FromArgb(255, 0, 255, 255));
+            AvailableColors.Add(Color.FromArgb(255, 0, 128, 192));
+            AvailableColors.Add(Color.FromArgb(255, 128, 128, 192));
+            AvailableColors.Add(Color.FromArgb(255, 255, 0, 255));
+            AvailableColors.Add(Color.FromArgb(255, 128, 0, 255));
+            AvailableColors.Add(Color.FromArgb(255, 0, 128, 64));
+            AvailableColors.Add(Color.FromArgb(255, 128, 0, 0));
+            AvailableColors.Add(Color.FromArgb(255, 0, 0, 255));
+            AvailableColors.Add(Color.FromArgb(255, 0, 128, 255));
+
+        }
+
+        /// <summary>
+        /// Dynamically generate rectangles and add them to drop down
+        /// </summary>
+        private void GenerateColorBoxes()
+        {
+            foreach (var c in AvailableColors)
+            {
+                Rectangle rec = new Rectangle();
+
+                rec.Height = 20;
+                rec.Name = c.ToString();
+                rec.Fill = new SolidColorBrush(c);
+                colorBox.Items.Add(rec);
+            }
         }
 
     }

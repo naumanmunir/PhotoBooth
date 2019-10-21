@@ -31,7 +31,6 @@
     </Page.TopAppBar>
 
     <Grid>
-        
         <Image Name="capturedImg"></Image>
         <InkCanvas Name="PaintCanvas"  />
 
