@@ -31,7 +31,6 @@
   </tbody>
 </table>
 
-# PhotoBooth
 
 <h2>Notes</h2>
 
@@ -49,6 +48,7 @@ Things To Do Still:
 
 
 
+# PhotoBooth
 
 Photo Booth App
 
