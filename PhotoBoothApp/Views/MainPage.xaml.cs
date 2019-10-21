@@ -1,4 +1,5 @@
-﻿using PhotoBoothApp.Models;
+﻿using Microsoft.Graphics.Canvas;
+using PhotoBoothApp.Models;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,6 +9,7 @@ using System.Threading.Tasks;
 using Windows.Devices.Enumeration;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using Windows.Graphics.Display;
 using Windows.Graphics.Imaging;
 using Windows.Media.Capture;
 using Windows.Media.Core;
@@ -36,12 +38,8 @@ namespace PhotoBoothApp
     /// </summary>
     public sealed partial class MainPage : Page
     {
-        int undoCounter = 3;
-
-        int strokeCounter = 0;
-
-        public Stack<InkStroke> UndoStrokes { get; set; } = new Stack<InkStroke>();
-        public Stack<InkStroke> CollectedStrokes { get; set; } = new Stack<InkStroke>();
+        int undosAvailable = 6;
+        int maxUndo = 6;
 
         public List<Color> AvailableColors { get; set; } = new List<Color>();
 
@@ -55,6 +53,7 @@ namespace PhotoBoothApp
                 Windows.UI.Core.CoreInputDeviceTypes.Touch;
 
 
+            //TODO: Place/generate this in a separate static file or class
             AvailableColors.Add(Color.FromArgb(255, 0, 0, 0));
             AvailableColors.Add(Color.FromArgb(255, 128, 128, 128));
             AvailableColors.Add(Color.FromArgb(255, 192, 192, 192));
@@ -72,7 +71,7 @@ namespace PhotoBoothApp
             AvailableColors.Add(Color.FromArgb(255, 0, 0, 255));
             AvailableColors.Add(Color.FromArgb(255, 0, 128, 255));
 
-
+            //Dynamically generate rectangles and add them to drop down
             foreach (var c in AvailableColors)
             {
                 Rectangle rec = new Rectangle();
@@ -103,72 +102,60 @@ namespace PhotoBoothApp
 
         private void InkPresenter_StrokesCollected(InkPresenter sender, InkStrokesCollectedEventArgs args)
         {
-            var strokes = sender.StrokeContainer.GetStrokes();
-
-            if (strokes.Last() != null)
+            //Add back to undoAvailable but only if its less than MaxUndos
+            if (undosAvailable < maxUndo)
             {
-                if (CollectedStrokes.Count <= 3)
-                {
-                    CollectedStrokes.Push(strokes.Last());
-                }
-                else
-                {
-
-                    //CollectedStrokes.Push(strokes.Last());
-                }
+                undosAvailable += 1;
             }
-            
         }
 
         private void NewFile_Click(object sender, RoutedEventArgs e)
         {
+            //Set captured image to null
             capturedImg.Source = null;
+
+            //Clear the canvas
             PaintCanvas.InkPresenter.StrokeContainer.Clear();
 
         }
 
-        int currIndex = 0;
-
         private void BtnUndo_Click(object sender, RoutedEventArgs e)
         {
+            //Get all strokes
             var strokes = PaintCanvas.InkPresenter.StrokeContainer.GetStrokes();
+
+            //Check if there are any strokes
             if (strokes.Count > 0)
             {
-
-                if (undoCounter > 0)
+                //Check if we have undos available
+                if (undosAvailable > 0)
                 {
+                    //Get the last stroke
                     strokes[strokes.Count - 1].Selected = true;
 
+                    //Remove last stroke
                     PaintCanvas.InkPresenter.StrokeContainer.DeleteSelected();
 
-                    undoCounter--;
+                    //subtract available undos by 1
+                    undosAvailable--;
                 }
-
-
             }
-
-            //if (CollectedStrokes.Count > 0)
-            //{
-            //    var stroke = CollectedStrokes.Pop();
-
-            //    stroke.Selected = true;
-
-            //    PaintCanvas.InkPresenter.StrokeContainer.DeleteSelected();
-            //}
-
         }
 
         private async void BtnOpen_ClickAsync(object sender, RoutedEventArgs e)
         {
-
+            //Open file dialog
             var openPicker = new FileOpenPicker();
 
+            //Only .jpg files
             openPicker.FileTypeFilter.Add(".jpg");
 
             var file = await openPicker.PickSingleFileAsync();
 
+            //File is selected
             if (file != null)
             {
+                //Remove current captured image
                 capturedImg.Source = null;
 
                 var stream = await file.OpenAsync(FileAccessMode.Read);
@@ -176,6 +163,7 @@ namespace PhotoBoothApp
                 // Read from file.
                 using (var inputStream = stream.GetInputStreamAt(0))
                 {
+                    //Set canvas strokes from stream
                     await PaintCanvas.InkPresenter.StrokeContainer.LoadAsync(inputStream);
                 }
                 stream.Dispose();
@@ -187,7 +175,7 @@ namespace PhotoBoothApp
             var currentStrokes = PaintCanvas.InkPresenter.StrokeContainer.GetStrokes();
 
             // Strokes present on ink canvas.
-            if (currentStrokes.Count > 0)
+            if (currentStrokes.Count > 0 || capturedImg.Source != null)
             {
                 FileSavePicker fsp = new FileSavePicker();
 
@@ -197,6 +185,7 @@ namespace PhotoBoothApp
 
                 StorageFile file = await fsp.PickSaveFileAsync();
 
+
                 if (file != null)
                 {
                     //Prevent updates to the file until updates are 
@@ -205,12 +194,37 @@ namespace PhotoBoothApp
                     //Open file stream for writing.
                     var stream = await file.OpenAsync(FileAccessMode.ReadWrite);
 
-                    //Write the ink strokes to the output stream.
-                    using (IOutputStream outputStream = stream.GetOutputStreamAt(0))
+                    if (capturedImg.Source != null)
                     {
-                        await PaintCanvas.InkPresenter.StrokeContainer.SaveAsync(outputStream);
-                        await outputStream.FlushAsync();
+                        DisplayInformation display = DisplayInformation.GetForCurrentView();
+                        var renderTargetBitmap = new RenderTargetBitmap();
+                        await renderTargetBitmap.RenderAsync(capturedImg, (int)capturedImg.Width, (int)capturedImg.Height);
+
+                        IBuffer pixels = await renderTargetBitmap.GetPixelsAsync();
+                        byte[] bytes = pixels.ToArray();
+
+                        var canvasBytes = GetSignatureBitmapFullAsync();
+
+                        // Create an encoder with the desired format
+                        BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.JpegEncoderId, stream);
+
+                        
+
+                        encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore, (uint)capturedImg.ActualWidth, (uint)capturedImg.ActualHeight, display.LogicalDpi, display.LogicalDpi, bytes);
+
+
+                        
+                        await encoder.FlushAsync();
                     }
+
+                    //Write the ink strokes to the output stream.
+                    //using (IOutputStream outputStream = stream.GetOutputStreamAt(0))
+                    //{
+                    //    await PaintCanvas.InkPresenter.StrokeContainer.SaveAsync(outputStream);
+
+                    //    await outputStream.FlushAsync();
+                    //}
+
                     stream.Dispose();
 
                     // Finalize write so other apps can update file.
@@ -227,6 +241,60 @@ namespace PhotoBoothApp
                     }
                 }
             }
+
+
+            //BitmapDecoder decoder = await BitmapDecoder.CreateAsync(stream);
+
+
+            //SoftwareBitmap softwareBitmap = await decoder.GetSoftwareBitmapAsync();
+
+            //SoftwareBitmap softwareBitmapBGR8 = SoftwareBitmap.Convert(softwareBitmap, BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
+        }
+
+        private byte[] ConvertInkCanvasToByteArray()
+        {
+            var canvasStrokes = PaintCanvas.InkPresenter.StrokeContainer.GetStrokes();
+
+            if (canvasStrokes.Count > 0)
+            {
+                var width = (int)PaintCanvas.ActualWidth;
+                var height = (int)PaintCanvas.ActualHeight;
+                var device = CanvasDevice.GetSharedDevice();
+                var renderTarget = new CanvasRenderTarget(device, width,
+                    height, 96);
+
+                using (var ds = renderTarget.CreateDrawingSession())
+                {
+                    ds.Clear(Colors.White);
+                    ds.DrawInk(PaintCanvas.InkPresenter.StrokeContainer.GetStrokes());
+                }
+
+                return renderTarget.GetPixelBytes();
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        private async Task<WriteableBitmap> GetSignatureBitmapFullAsync()
+        {
+            var bytes = ConvertInkCanvasToByteArray();
+
+            if (bytes != null)
+            {
+                var width = (int)PaintCanvas.ActualWidth;
+                var height = (int)PaintCanvas.ActualHeight;
+
+                var bmp = new WriteableBitmap(width, height);
+                using (var stream = bmp.PixelBuffer.AsStream())
+                {
+                    await stream.WriteAsync(bytes, 0, bytes.Length);
+                    return bmp;
+                }
+            }
+            else
+                return null;
         }
 
         private async void BtnCapture_Click(object sender, RoutedEventArgs e)
@@ -243,9 +311,9 @@ namespace PhotoBoothApp
                 return;
             }
 
-            StorageFolder destinationFolder = await ApplicationData.Current.LocalFolder.CreateFolderAsync("ProfilePhotoFolder", CreationCollisionOption.OpenIfExists);
+            StorageFolder destinationFolder = await ApplicationData.Current.LocalFolder.CreateFolderAsync("TempCaptureFolder", CreationCollisionOption.OpenIfExists);
 
-            await photo.CopyAsync(destinationFolder, "ProfilePhoto.jpg", NameCollisionOption.ReplaceExisting);
+            await photo.CopyAsync(destinationFolder, "CapturePhoto.jpg", NameCollisionOption.ReplaceExisting);
             
 
             //read stream
