@@ -53,13 +53,13 @@ Things To Do Still:
 Photo Booth App
 
 Photo Booth App is a Paint like desktop application programmed using C# .NET Framework and UWP (Universal Windows Platform). 
-It allows users to draw/paint on a canvas, change the color of their pen from 16 predefined colors. 
+It allows users to draw/paint on a canvas, and capture an image from their webcam.
 
 Functionalities of this app:
 <ul>
 <li>Using your mouse, touch or a stylus pen to draw</li>
 
-<li>Selection of various colors</li>
+<li>Selection of 16 predefined colors</li>
 
 <li>Saving your drawing</li>
 
