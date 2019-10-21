@@ -75,7 +75,6 @@ namespace PhotoBoothApp
 
         }
 
-
         private void InkPresenter_StrokesCollected(InkPresenter sender, InkStrokesCollectedEventArgs args)
         {
             //Add back to undoAvailable but only if its less than MaxUndos
@@ -151,7 +150,7 @@ namespace PhotoBoothApp
             var currentStrokes = PaintCanvas.InkPresenter.StrokeContainer.GetStrokes();
 
             // Strokes present on ink canvas.
-            if (currentStrokes.Count > 0 || capturedImg.Source != null)
+            if (currentStrokes.Count > 0)
             {
                 FileSavePicker fsp = new FileSavePicker();
 
@@ -168,109 +167,56 @@ namespace PhotoBoothApp
                     //Open file stream for writing.
                     var stream = await file.OpenAsync(FileAccessMode.ReadWrite);
 
-                    if (capturedImg.Source != null)
-                    {
-                        DisplayInformation display = DisplayInformation.GetForCurrentView();
-                        var renderTargetBitmap = new RenderTargetBitmap();
-                        await renderTargetBitmap.RenderAsync(capturedImg, (int)capturedImg.Width, (int)capturedImg.Height);
+                    #region Working on writing both strokes and image to file
+                    //if (capturedImg.Source != null)
+                    //{
+                    //    DisplayInformation display = DisplayInformation.GetForCurrentView();
+                    //    var renderTargetBitmap = new RenderTargetBitmap();
+                    //    await renderTargetBitmap.RenderAsync(capturedImg, (int)capturedImg.Width, (int)capturedImg.Height);
 
-                        IBuffer pixels = await renderTargetBitmap.GetPixelsAsync();
-                        byte[] bytes = pixels.ToArray();
+                    //    IBuffer pixels = await renderTargetBitmap.GetPixelsAsync();
+                    //    byte[] bytes = pixels.ToArray();
 
-                        var canvasBitmap = GetSignatureBitmapFullAsync();
+                    //    var canvasBitmap = GetSignatureBitmapFullAsync();
 
-                        // Create an encoder with the desired format
-                        BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.JpegEncoderId, stream);
-
-
-                        // set the source for WriteableBitmap  
-                        await canvasBitmap.Result.SetSourceAsync(stream);
-
-                        // Get pixels of the WriteableBitmap object 
-                        Stream pixelStream = canvasBitmap.Result.PixelBuffer.AsStream();
-                        byte[] pixels2 = new byte[pixelStream.Length];
-                        await pixelStream.ReadAsync(pixels2, 0, pixels2.Length);
+                    //    // Create an encoder with the desired format
+                    //    BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.JpegEncoderId, stream);
 
 
-                        //encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore, (uint)capturedImg.ActualWidth, (uint)capturedImg.ActualHeight, display.LogicalDpi, display.LogicalDpi, bytes);
-                        encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore, (uint)canvasBitmap.Result.PixelWidth, (uint)canvasBitmap.Result.PixelHeight, 96, 96, pixels2);
+                    //    // set the source for WriteableBitmap  
+                    //    await canvasBitmap.Result.SetSourceAsync(stream);
+
+                    //    // Get pixels of the WriteableBitmap object 
+                    //    Stream pixelStream = canvasBitmap.Result.PixelBuffer.AsStream();
+                    //    byte[] pixels2 = new byte[pixelStream.Length];
+                    //    await pixelStream.ReadAsync(pixels2, 0, pixels2.Length);
+
+
+                    //    //encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore, (uint)capturedImg.ActualWidth, (uint)capturedImg.ActualHeight, display.LogicalDpi, display.LogicalDpi, bytes);
+                    //    encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore, (uint)canvasBitmap.Result.PixelWidth, (uint)canvasBitmap.Result.PixelHeight, 96, 96, pixels2);
 
 
 
-                        await encoder.FlushAsync();
-                    }
+                    //    await encoder.FlushAsync();
+                    //}
 
+                    #endregion
 
                     //Write the ink strokes to the output stream.
-                    //using (IOutputStream outputStream = stream.GetOutputStreamAt(0))
-                    //{
-                    //    await PaintCanvas.InkPresenter.StrokeContainer.SaveAsync(outputStream);
+                    using (IOutputStream outputStream = stream.GetOutputStreamAt(0))
+                    {
+                        await PaintCanvas.InkPresenter.StrokeContainer.SaveAsync(outputStream);
 
-                    //    await outputStream.FlushAsync();
-                    //}
+                        await outputStream.FlushAsync();
+                    }
 
                     stream.Dispose();
 
                     // Finalize write so other apps can update file.
                     Windows.Storage.Provider.FileUpdateStatus status =
                         await CachedFileManager.CompleteUpdatesAsync(file);
-
-                    if (status == Windows.Storage.Provider.FileUpdateStatus.Complete)
-                    {
-                        // File saved.
-                    }
-                    else
-                    {
-                        // File couldn't be saved.
-                    }
                 }
             }
-        }
-
-        private byte[] ConvertInkCanvasToByteArray()
-        {
-            var canvasStrokes = PaintCanvas.InkPresenter.StrokeContainer.GetStrokes();
-
-            if (canvasStrokes.Count > 0)
-            {
-                var width = (int)PaintCanvas.ActualWidth;
-                var height = (int)PaintCanvas.ActualHeight;
-                var device = CanvasDevice.GetSharedDevice();
-                var renderTarget = new CanvasRenderTarget(device, width,
-                    height, 96);
-
-                using (var ds = renderTarget.CreateDrawingSession())
-                {
-                    ds.Clear(Colors.White);
-                    ds.DrawInk(PaintCanvas.InkPresenter.StrokeContainer.GetStrokes());
-                }
-
-                return renderTarget.GetPixelBytes();
-            }
-            else
-            {
-                return null;
-            }
-        }
-
-        private async Task<WriteableBitmap> GetSignatureBitmapFullAsync()
-        {
-            var bytes = ConvertInkCanvasToByteArray();
-
-            if (bytes != null)
-            {
-                var width = (int)PaintCanvas.ActualWidth;
-                var height = (int)PaintCanvas.ActualHeight;
-
-                var bmp = new WriteableBitmap(width, height);
-                using (var stream = bmp.PixelBuffer.AsStream())
-                {
-                    await stream.WriteAsync(bytes, 0, bytes.Length);
-                    return bmp;
-                }
-            }
-            else
-                return null;
         }
 
         private async void BtnCapture_Click(object sender, RoutedEventArgs e)
@@ -362,6 +308,55 @@ namespace PhotoBoothApp
                 colorBox.Items.Add(rec);
             }
         }
+
+
+        ///This code snippet was taken from https://stackoverflow.com/questions/33523831/save-inkcanvas-strokes-as-png-jpg-image-in-windows-10
+        ///To convert ink canvas strokes to bytes and then bytes to a bitmap
+        //private byte[] ConvertInkCanvasToByteArray()
+        //{
+        //    var canvasStrokes = PaintCanvas.InkPresenter.StrokeContainer.GetStrokes();
+
+        //    if (canvasStrokes.Count > 0)
+        //    {
+        //        var width = (int)PaintCanvas.ActualWidth;
+        //        var height = (int)PaintCanvas.ActualHeight;
+        //        var device = CanvasDevice.GetSharedDevice();
+        //        var renderTarget = new CanvasRenderTarget(device, width,
+        //            height, 96);
+
+        //        using (var ds = renderTarget.CreateDrawingSession())
+        //        {
+        //            ds.Clear(Colors.White);
+        //            ds.DrawInk(PaintCanvas.InkPresenter.StrokeContainer.GetStrokes());
+        //        }
+
+        //        return renderTarget.GetPixelBytes();
+        //    }
+        //    else
+        //    {
+        //        return null;
+        //    }
+        //}
+
+        //private async Task<WriteableBitmap> GetSignatureBitmapFullAsync()
+        //{
+        //    var bytes = ConvertInkCanvasToByteArray();
+
+        //    if (bytes != null)
+        //    {
+        //        var width = (int)PaintCanvas.ActualWidth;
+        //        var height = (int)PaintCanvas.ActualHeight;
+
+        //        var bmp = new WriteableBitmap(width, height);
+        //        using (var stream = bmp.PixelBuffer.AsStream())
+        //        {
+        //            await stream.WriteAsync(bytes, 0, bytes.Length);
+        //            return bmp;
+        //        }
+        //    }
+        //    else
+        //        return null;
+        //}
 
     }
 }

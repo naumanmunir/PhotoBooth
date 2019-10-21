@@ -10,10 +10,36 @@ namespace PhotoBoothApp.Tests
         [TestMethod]
         public void UserSelectedNewFile()
         {
+            
         }
 
         [TestMethod]
-        public void Successfuly()
+        public void SuccessfulyOpenedFile()
+        {
+        }
+
+        [TestMethod]
+        public void SuccessfulySavedFile()
+        {
+        }
+
+        [TestMethod]
+        public void PencilColorChanged()
+        {
+        }
+
+        [TestMethod]
+        public void WebcamOpened()
+        {
+        }
+
+        [TestMethod]
+        public void WebcamImageCaptured()
+        {
+        }
+
+        [TestMethod]
+        public void UndoLimitReached()
         {
         }
     }
