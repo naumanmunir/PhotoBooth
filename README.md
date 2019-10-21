@@ -89,6 +89,8 @@ Functionalities of this app:
 
 <h2>Running Tests</h2>
 
+(work in progress)
+
 <h2>Technologies Used</h2>
 
 UWP .NET Framework 4.6.1
