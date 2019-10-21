@@ -33,6 +33,23 @@
 
 # PhotoBooth
 
+<h2>Notes</h2>
+
+This was a 2 day project and using UWP for the first time. Some things I would improve is implementing the MVVM pattern, during my research I came across the Prism Library (heavyly used by UWP Developers). Prism would allow me to implement the MVVM pattern, use dependency injection where needed, and allow me to do unit testing.
+
+Things To Do Still:
+
+<ul>
+	<li>	I was able to read and write pencil drawings to a .jpg file. As well as write the captured image from a webcam. But only able to save 1 or the other. I have tried converting both drawings and image to byte[] and writing that into a single stream, but the results were undesirable. I will continue working on this.
+	</li>
+	<li>
+		Finish unit test methods
+	</li>
+</ul>
+
+
+
+
 Photo Booth App
 
 Photo Booth App is a Paint like desktop application programmed using C# .NET Framework and UWP (Universal Windows Platform). 
